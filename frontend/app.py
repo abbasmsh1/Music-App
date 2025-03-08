@@ -199,7 +199,13 @@ def admin_dashboard():
     try:
         songs = requests.get(f'{API_URL}/songs/', headers=headers).json()
         artists = requests.get(f'{API_URL}/artists/', headers=headers).json()
-        return render_template('admin_dashboard.html', songs=songs, artists=artists)
+        users = requests.get(f'{API_URL}/users/', headers=headers).json()
+        active_tab = request.args.get('tab', 'songs')
+        return render_template('admin_dashboard.html', 
+                             songs=songs, 
+                             artists=artists,
+                             users=users,
+                             active_tab=active_tab)
     except requests.RequestException:
         return render_template('error.html', 
                              error_code=500,
@@ -214,6 +220,32 @@ def delete_song(song_id):
         return jsonify(response.json())
     except requests.RequestException:
         return jsonify({'error': 'Failed to delete song'}), 500
+
+@app.route('/admin/users/<int:user_id>/toggle-status', methods=['POST'])
+@admin_required
+def toggle_user_status(user_id):
+    headers = get_api_headers()
+    try:
+        response = requests.post(
+            f'{API_URL}/users/{user_id}/toggle-status',
+            headers=headers
+        )
+        return jsonify(response.json())
+    except requests.RequestException:
+        return jsonify({'error': 'Failed to update user status'}), 500
+
+@app.route('/admin/users/<int:user_id>', methods=['DELETE'])
+@admin_required
+def delete_user(user_id):
+    headers = get_api_headers()
+    try:
+        response = requests.delete(
+            f'{API_URL}/users/{user_id}',
+            headers=headers
+        )
+        return jsonify(response.json())
+    except requests.RequestException:
+        return jsonify({'error': 'Failed to delete user'}), 500
 
 @app.errorhandler(404)
 def not_found_error(error):

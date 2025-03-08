@@ -16,13 +16,17 @@
         <div class="admin-menu">
             <h2>Management</h2>
             <ul class="menu-list">
-                <li class="active">
+                <li class="{% if active_tab == 'songs' %}active{% endif %}" onclick="switchTab('songs')">
                     <span class="material-icons">music_note</span>
                     Songs
                 </li>
-                <li>
+                <li class="{% if active_tab == 'artists' %}active{% endif %}" onclick="switchTab('artists')">
                     <span class="material-icons">group</span>
                     Artists
+                </li>
+                <li class="{% if active_tab == 'users' %}active{% endif %}" onclick="switchTab('users')">
+                    <span class="material-icons">people</span>
+                    Users
                 </li>
             </ul>
         </div>
@@ -40,37 +44,111 @@
 
     <!-- Main Content -->
     <div class="main-content">
-        <div class="admin-header">
-            <h2>Song Management</h2>
-            <button class="btn btn-primary" onclick="showUploadModal()">
-                <span class="material-icons">upload</span>
-                Upload New Song
-            </button>
-        </div>
+        <!-- Songs Tab -->
+        <div id="songs-tab" class="content-tab {% if active_tab == 'songs' %}active{% endif %}">
+            <div class="admin-header">
+                <h2>Song Management</h2>
+                <button class="btn btn-primary" onclick="showUploadModal()">
+                    <span class="material-icons">upload</span>
+                    Upload New Song
+                </button>
+            </div>
 
-        <!-- Song List -->
-        <div class="songs-container">
-            <div class="song-list">
-                {% for song in songs %}
-                <div class="song-item">
-                    <span class="material-icons">music_note</span>
-                    <div class="song-info">
-                        <div class="song-title">{{ song.title }}</div>
-                        <div class="song-meta">
-                            <span class="song-artist">{{ song.artist.name if song.artist else 'Unknown Artist' }}</span>
-                            <span class="song-duration">{{ (song.duration / 60)|int }}:{{ (song.duration % 60)|string|zfill(2) }}</span>
+            <div class="songs-container">
+                <div class="song-list">
+                    {% for song in songs %}
+                    <div class="song-item">
+                        <span class="material-icons">music_note</span>
+                        <div class="song-info">
+                            <div class="song-title">{{ song.title }}</div>
+                            <div class="song-meta">
+                                <span class="song-artist">{{ song.artist.name if song.artist else 'Unknown Artist' }}</span>
+                                <span class="song-duration">{{ (song.duration / 60)|int }}:{{ (song.duration % 60)|string|zfill(2) }}</span>
+                            </div>
+                        </div>
+                        <div class="song-actions">
+                            <button class="btn-icon" onclick="editSong({{ song.id }})">
+                                <span class="material-icons">edit</span>
+                            </button>
+                            <button class="btn-icon" onclick="deleteSong({{ song.id }})">
+                                <span class="material-icons">delete</span>
+                            </button>
                         </div>
                     </div>
-                    <div class="song-actions">
-                        <button class="btn-icon" onclick="editSong({{ song.id }})">
-                            <span class="material-icons">edit</span>
-                        </button>
-                        <button class="btn-icon" onclick="deleteSong({{ song.id }})">
-                            <span class="material-icons">delete</span>
-                        </button>
-                    </div>
+                    {% endfor %}
                 </div>
-                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Users Tab -->
+        <div id="users-tab" class="content-tab {% if active_tab == 'users' %}active{% endif %}">
+            <div class="admin-header">
+                <h2>User Management</h2>
+            </div>
+
+            <div class="users-container">
+                <div class="search-box">
+                    <input type="text" id="userSearch" placeholder="Search users..." onkeyup="filterUsers()">
+                </div>
+                <div class="user-list">
+                    {% for user in users %}
+                    <div class="user-item">
+                        <span class="material-icons">person</span>
+                        <div class="user-info">
+                            <div class="user-name">{{ user.username }}</div>
+                            <div class="user-meta">
+                                <span class="user-email">{{ user.email }}</span>
+                                <span class="user-status {% if user.is_active %}active{% endif %}">
+                                    {{ "Active" if user.is_active else "Inactive" }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="user-actions">
+                            <button class="btn-icon" onclick="toggleUserStatus({{ user.id }}, {{ user.is_active|tojson }})">
+                                <span class="material-icons">{{ "block" if user.is_active else "check_circle" }}</span>
+                            </button>
+                            <button class="btn-icon" onclick="deleteUser({{ user.id }})">
+                                <span class="material-icons">delete</span>
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Artists Tab -->
+        <div id="artists-tab" class="content-tab {% if active_tab == 'artists' %}active{% endif %}">
+            <div class="admin-header">
+                <h2>Artist Management</h2>
+                <button class="btn btn-primary" onclick="showArtistModal()">
+                    <span class="material-icons">add</span>
+                    Add Artist
+                </button>
+            </div>
+
+            <div class="artists-container">
+                <div class="artist-list">
+                    {% for artist in artists %}
+                    <div class="artist-item">
+                        <span class="material-icons">person</span>
+                        <div class="artist-info">
+                            <div class="artist-name">{{ artist.name }}</div>
+                            <div class="artist-meta">
+                                <span class="artist-songs">{{ artist.songs|length }} songs</span>
+                            </div>
+                        </div>
+                        <div class="artist-actions">
+                            <button class="btn-icon" onclick="editArtist({{ artist.id }})">
+                                <span class="material-icons">edit</span>
+                            </button>
+                            <button class="btn-icon" onclick="deleteArtist({{ artist.id }})">
+                                <span class="material-icons">delete</span>
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
             </div>
         </div>
     </div>
@@ -117,6 +195,65 @@ function hideUploadModal() {
     document.getElementById('uploadModal').classList.remove('show');
 }
 
+function switchTab(tabName) {
+    // Hide all tabs
+    document.querySelectorAll('.content-tab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    document.querySelectorAll('.menu-list li').forEach(item => {
+        item.classList.remove('active');
+    });
+
+    // Show selected tab
+    document.getElementById(`${tabName}-tab`).classList.add('active');
+    document.querySelector(`.menu-list li[onclick="switchTab('${tabName}')"]`).classList.add('active');
+
+    // Update URL without page reload
+    const url = new URL(window.location);
+    url.searchParams.set('tab', tabName);
+    window.history.pushState({}, '', url);
+}
+
+function filterUsers() {
+    const searchInput = document.getElementById('userSearch');
+    const filter = searchInput.value.toLowerCase();
+    const users = document.querySelectorAll('.user-item');
+
+    users.forEach(user => {
+        const username = user.querySelector('.user-name').textContent.toLowerCase();
+        const email = user.querySelector('.user-email').textContent.toLowerCase();
+        user.style.display = username.includes(filter) || email.includes(filter) ? '' : 'none';
+    });
+}
+
+function toggleUserStatus(userId, currentStatus) {
+    if (confirm(`Are you sure you want to ${currentStatus ? 'deactivate' : 'activate'} this user?`)) {
+        fetch(`/admin/users/${userId}/toggle-status`, {
+            method: 'POST'
+        }).then(response => {
+            if (response.ok) {
+                window.location.reload();
+            } else {
+                alert('Failed to update user status');
+            }
+        });
+    }
+}
+
+function deleteUser(userId) {
+    if (confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+        fetch(`/admin/users/${userId}`, {
+            method: 'DELETE'
+        }).then(response => {
+            if (response.ok) {
+                window.location.reload();
+            } else {
+                alert('Failed to delete user');
+            }
+        });
+    }
+}
+
 function editSong(songId) {
     // Implement song editing
 }
@@ -134,5 +271,12 @@ function deleteSong(songId) {
         });
     }
 }
+
+// Set initial tab from URL parameter
+document.addEventListener('DOMContentLoaded', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const tab = urlParams.get('tab') || 'songs';
+    switchTab(tab);
+});
 </script>
 {% endblock %} 
