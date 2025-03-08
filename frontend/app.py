@@ -27,12 +27,14 @@ def login_required(f):
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'admin' not in session:
+        if 'admin' not in session or 'admin_token' not in session:
             return redirect(url_for('admin_login'))
         return f(*args, **kwargs)
     return decorated_function
 
 def get_api_headers():
+    if 'admin' in session and 'admin_token' in session:
+        return {'Authorization': f'Bearer {session["admin_token"]}'}
     return {'Authorization': f'Bearer {session["token"]}'}
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -180,8 +182,21 @@ def admin_login():
         password = request.form['password']
         
         if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
-            session['admin'] = True
-            return redirect(url_for('admin_dashboard'))
+            # Get admin token from API
+            try:
+                response = requests.post(f'{API_URL}/token', data={
+                    'username': username,
+                    'password': password
+                })
+                if response.status_code == 200:
+                    token_data = response.json()
+                    session['admin'] = True
+                    session['admin_token'] = token_data['access_token']
+                    return redirect(url_for('admin_dashboard'))
+                else:
+                    return render_template('admin_login.html', error='Failed to authenticate with API')
+            except requests.RequestException:
+                return render_template('admin_login.html', error='Server error')
         else:
             return render_template('admin_login.html', error='Invalid credentials')
     
@@ -190,6 +205,7 @@ def admin_login():
 @app.route('/admin/logout')
 def admin_logout():
     session.pop('admin', None)
+    session.pop('admin_token', None)
     return redirect(url_for('admin_login'))
 
 @app.route('/admin')
@@ -206,7 +222,7 @@ def admin_dashboard():
                              artists=artists,
                              users=users,
                              active_tab=active_tab)
-    except requests.RequestException:
+    except requests.RequestException as e:
         return render_template('error.html', 
                              error_code=500,
                              error_message='Failed to load data')
