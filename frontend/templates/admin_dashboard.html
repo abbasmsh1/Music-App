@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - Music App{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="logo">
+            <h1>Admin Panel</h1>
+        </div>
+        <div class="admin-menu">
+            <h2>Management</h2>
+            <ul class="menu-list">
+                <li class="active">
+                    <span class="material-icons">music_note</span>
+                    Songs
+                </li>
+                <li>
+                    <span class="material-icons">group</span>
+                    Artists
+                </li>
+            </ul>
+        </div>
+        <div class="user-controls">
+            <a href="{{ url_for('dashboard') }}" class="btn-back">
+                <span class="material-icons">home</span>
+                User Dashboard
+            </a>
+            <a href="{{ url_for('admin_logout') }}" class="btn-logout">
+                <span class="material-icons">logout</span>
+                Logout
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="admin-header">
+            <h2>Song Management</h2>
+            <button class="btn btn-primary" onclick="showUploadModal()">
+                <span class="material-icons">upload</span>
+                Upload New Song
+            </button>
+        </div>
+
+        <!-- Song List -->
+        <div class="songs-container">
+            <div class="song-list">
+                {% for song in songs %}
+                <div class="song-item">
+                    <span class="material-icons">music_note</span>
+                    <div class="song-info">
+                        <div class="song-title">{{ song.title }}</div>
+                        <div class="song-meta">
+                            <span class="song-artist">{{ song.artist.name if song.artist else 'Unknown Artist' }}</span>
+                            <span class="song-duration">{{ (song.duration / 60)|int }}:{{ (song.duration % 60)|string|zfill(2) }}</span>
+                        </div>
+                    </div>
+                    <div class="song-actions">
+                        <button class="btn-icon" onclick="editSong({{ song.id }})">
+                            <span class="material-icons">edit</span>
+                        </button>
+                        <button class="btn-icon" onclick="deleteSong({{ song.id }})">
+                            <span class="material-icons">delete</span>
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Upload Modal -->
+<div id="uploadModal" class="modal">
+    <div class="modal-content">
+        <h2>Upload New Song</h2>
+        <form id="uploadForm" action="{{ url_for('upload') }}" method="POST" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="title">Song Title</label>
+                <input type="text" id="title" name="title" required>
+            </div>
+            <div class="form-group">
+                <label for="artist">Artist</label>
+                <select id="artist" name="artist_id" required>
+                    <option value="">Select Artist</option>
+                    {% for artist in artists %}
+                    <option value="{{ artist.id }}">{{ artist.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="file">Audio File</label>
+                <input type="file" id="file" name="file" accept="audio/*" required>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="hideUploadModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Upload</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function showUploadModal() {
+    document.getElementById('uploadModal').classList.add('show');
+}
+
+function hideUploadModal() {
+    document.getElementById('uploadModal').classList.remove('show');
+}
+
+function editSong(songId) {
+    // Implement song editing
+}
+
+function deleteSong(songId) {
+    if (confirm('Are you sure you want to delete this song?')) {
+        fetch(`/admin/songs/${songId}`, {
+            method: 'DELETE'
+        }).then(response => {
+            if (response.ok) {
+                window.location.reload();
+            } else {
+                alert('Failed to delete song');
+            }
+        });
+    }
+}
+</script>
+{% endblock %} 

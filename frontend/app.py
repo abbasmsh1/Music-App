@@ -7,6 +7,10 @@ app = Flask(__name__)
 app.secret_key = os.urandom(24)  # for session management
 API_URL = 'http://localhost:8000'
 
+# Admin credentials (in a real app, these should be in a secure config/database)
+ADMIN_USERNAME = "admin"
+ADMIN_PASSWORD = "admin123"  # In production, use a strong hashed password
+
 # Custom filter for zero-padding strings
 @app.template_filter('zfill')
 def zfill_filter(value, width):
@@ -17,6 +21,14 @@ def login_required(f):
     def decorated_function(*args, **kwargs):
         if 'token' not in session:
             return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'admin' not in session:
+            return redirect(url_for('admin_login'))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -160,6 +172,48 @@ def manage_playlist_songs(playlist_id, song_id):
 def logout():
     session.pop('token', None)
     return redirect(url_for('login'))
+
+@app.route('/admin/login', methods=['GET', 'POST'])
+def admin_login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        
+        if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+            session['admin'] = True
+            return redirect(url_for('admin_dashboard'))
+        else:
+            return render_template('admin_login.html', error='Invalid credentials')
+    
+    return render_template('admin_login.html')
+
+@app.route('/admin/logout')
+def admin_logout():
+    session.pop('admin', None)
+    return redirect(url_for('admin_login'))
+
+@app.route('/admin')
+@admin_required
+def admin_dashboard():
+    headers = get_api_headers()
+    try:
+        songs = requests.get(f'{API_URL}/songs/', headers=headers).json()
+        artists = requests.get(f'{API_URL}/artists/', headers=headers).json()
+        return render_template('admin_dashboard.html', songs=songs, artists=artists)
+    except requests.RequestException:
+        return render_template('error.html', 
+                             error_code=500,
+                             error_message='Failed to load data')
+
+@app.route('/admin/songs/<int:song_id>', methods=['DELETE'])
+@admin_required
+def delete_song(song_id):
+    headers = get_api_headers()
+    try:
+        response = requests.delete(f'{API_URL}/songs/{song_id}', headers=headers)
+        return jsonify(response.json())
+    except requests.RequestException:
+        return jsonify({'error': 'Failed to delete song'}), 500
 
 @app.errorhandler(404)
 def not_found_error(error):
