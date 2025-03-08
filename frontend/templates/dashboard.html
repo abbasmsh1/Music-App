@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Music App{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="logo">
+            <h1>Music App</h1>
+        </div>
+        <div class="playlists">
+            <div class="playlists-header">
+                <h2>Your Playlists</h2>
+                <button class="btn-icon" onclick="showCreatePlaylistModal()">
+                    <span class="material-icons">add</span>
+                </button>
+            </div>
+            <ul class="playlist-list">
+                {% for playlist in playlists %}
+                <li>
+                    <span class="material-icons">queue_music</span>
+                    {{ playlist.title }}
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="user-controls">
+            <a href="{{ url_for('logout') }}" class="btn-logout">
+                <span class="material-icons">logout</span>
+                Logout
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Music Visualizer -->
+        <div class="visualizer-container">
+            <canvas id="visualizer"></canvas>
+        </div>
+
+        <!-- Song List -->
+        <div class="songs-container">
+            <h2>All Songs</h2>
+            <div class="song-list">
+                {% for song in songs %}
+                <div class="song-item" onclick="playSong('{{ song.file_path }}', '{{ song.title }}')">
+                    <span class="material-icons">music_note</span>
+                    <div class="song-info">
+                        <div class="song-title">{{ song.title }}</div>
+                        <div class="song-duration">{{ (song.duration / 60)|int }}:{{ (song.duration % 60)|string|padstart(2, '0') }}</div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Player Controls -->
+    <div class="player-controls">
+        <div class="now-playing">
+            <span id="current-song">Select a song to play</span>
+        </div>
+        <div class="controls">
+            <button class="btn-icon" onclick="previousSong()">
+                <span class="material-icons">skip_previous</span>
+            </button>
+            <button class="btn-icon btn-play" onclick="togglePlay()">
+                <span class="material-icons" id="play-icon">play_arrow</span>
+            </button>
+            <button class="btn-icon" onclick="nextSong()">
+                <span class="material-icons">skip_next</span>
+            </button>
+        </div>
+        <div class="progress">
+            <div class="progress-bar" id="progress"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Playlist Modal -->
+<div id="createPlaylistModal" class="modal">
+    <div class="modal-content">
+        <h2>Create New Playlist</h2>
+        <form id="createPlaylistForm" onsubmit="createPlaylist(event)">
+            <div class="form-group">
+                <input type="text" name="title" placeholder="Playlist Name" required>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="hideCreatePlaylistModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Create</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/visualizer.js') }}"></script>
+<script src="{{ url_for('static', filename='js/player.js') }}"></script>
+{% endblock %} 
