@@ -53,7 +53,7 @@
                     <span class="material-icons">music_note</span>
                     <div class="song-info">
                         <div class="song-title">{{ song.title }}</div>
-                        <div class="song-duration">{{ (song.duration / 60)|int }}:{{ (song.duration % 60)|string|padstart(2, '0') }}</div>
+                        <div class="song-duration">{{ (song.duration / 60)|int }}:{{ (song.duration % 60)|string|zfill(2) }}</div>
                     </div>
                 </div>
                 {% endfor %}

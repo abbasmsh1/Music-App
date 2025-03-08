@@ -7,6 +7,11 @@ app = Flask(__name__)
 app.secret_key = os.urandom(24)  # for session management
 API_URL = 'http://localhost:8000'
 
+# Custom filter for zero-padding strings
+@app.template_filter('zfill')
+def zfill_filter(value, width):
+    return str(value).zfill(width)
+
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
