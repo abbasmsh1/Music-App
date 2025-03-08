@@ -9,6 +9,7 @@ import aiofiles
 import models
 import schemas
 import auth
+from admin import verify_admin_key
 from database import engine, get_db
 
 models.Base.metadata.create_all(bind=engine)
@@ -171,4 +172,41 @@ def add_song_to_playlist(
 
     playlist.songs.append(song)
     db.commit()
-    return {"message": "Song added to playlist"} 
+    return {"message": "Song added to playlist"}
+
+# Admin-only endpoints
+@app.get("/users/", response_model=list[schemas.User])
+def get_users(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    is_admin: bool = Depends(verify_admin_key)
+):
+    users = db.query(models.User).offset(skip).limit(limit).all()
+    return users
+
+@app.post("/users/{user_id}/toggle-status")
+def toggle_user_status(
+    user_id: int,
+    db: Session = Depends(get_db),
+    is_admin: bool = Depends(verify_admin_key)
+):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.is_active = not user.is_active
+    db.commit()
+    return {"status": "success"}
+
+@app.delete("/users/{user_id}")
+def delete_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    is_admin: bool = Depends(verify_admin_key)
+):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    db.delete(user)
+    db.commit()
+    return {"status": "success"} 
