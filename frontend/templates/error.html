@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}{{ error_code }} - Music App{% endblock %}
+
+{% block content %}
+<div class="error-container">
+    <div class="error-content">
+        <h1>{{ error_code }}</h1>
+        <p class="error-message">{{ error_message }}</p>
+        <div class="error-actions">
+            <a href="{{ url_for('dashboard') }}" class="btn btn-primary">
+                <span class="material-icons">home</span>
+                Back to Home
+            </a>
+            {% if error_code == 404 %}
+            <a href="javascript:history.back()" class="btn btn-secondary">
+                <span class="material-icons">arrow_back</span>
+                Go Back
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.error-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background-color: var(--background-base);
+}
+
+.error-content {
+    text-align: center;
+    padding: 48px;
+    background-color: var(--background-highlight);
+    border-radius: 8px;
+    max-width: 400px;
+}
+
+.error-content h1 {
+    font-size: 72px;
+    color: var(--primary-color);
+    margin-bottom: 16px;
+}
+
+.error-message {
+    color: var(--text-secondary);
+    margin-bottom: 32px;
+}
+
+.error-actions {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+}
+
+.error-actions .btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+</style>
+{% endblock %} 
