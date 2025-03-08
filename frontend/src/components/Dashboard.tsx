@@ -26,6 +26,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { songs, playlists, Song, Playlist } from '../services/api';
+import MusicVisualizer from './MusicVisualizer';
 
 interface DashboardProps {
   setIsAuthenticated: (value: boolean) => void;
@@ -85,21 +86,19 @@ function Dashboard({ setIsAuthenticated }: DashboardProps) {
 
   return (
     <Box sx={{ flexGrow: 1 }}>
-      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-        <Grid container spacing={3}>
-          {/* Header */}
-          <Grid item xs={12}>
-            <Box display="flex" justifyContent="space-between" alignItems="center">
-              <Typography variant="h4">Music App</Typography>
-              <IconButton onClick={handleLogout} color="inherit">
-                <Logout />
-              </IconButton>
-            </Box>
-          </Grid>
+      <Container maxWidth={false} sx={{ mt: 4, mb: 4, height: '100vh', display: 'flex', flexDirection: 'column' }}>
+        {/* Header */}
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+          <Typography variant="h4">Music App</Typography>
+          <IconButton onClick={handleLogout} color="inherit">
+            <Logout />
+          </IconButton>
+        </Box>
 
-          {/* Playlists */}
-          <Grid item xs={12} md={4}>
-            <Paper sx={{ p: 2, height: '70vh', overflow: 'auto' }}>
+        <Grid container spacing={2} sx={{ flexGrow: 1 }}>
+          {/* Left Sidebar - Playlists */}
+          <Grid item xs={12} md={2}>
+            <Paper sx={{ p: 2, height: '100%', overflow: 'auto' }}>
               <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
                 <Typography variant="h6">Your Playlists</Typography>
                 <IconButton onClick={() => setOpenDialog(true)}>
@@ -116,9 +115,16 @@ function Dashboard({ setIsAuthenticated }: DashboardProps) {
             </Paper>
           </Grid>
 
-          {/* Songs */}
-          <Grid item xs={12} md={8}>
-            <Paper sx={{ p: 2, height: '70vh', overflow: 'auto' }}>
+          {/* Center - Visualizer */}
+          <Grid item xs={12} md={7}>
+            <Paper sx={{ p: 2, height: '100%', overflow: 'hidden' }}>
+              <MusicVisualizer audioUrl={currentSong?.file_path} />
+            </Paper>
+          </Grid>
+
+          {/* Right Sidebar - Songs */}
+          <Grid item xs={12} md={3}>
+            <Paper sx={{ p: 2, height: '100%', overflow: 'auto' }}>
               <Typography variant="h6" mb={2}>All Songs</Typography>
               <List>
                 {songsList.map((song) => (
@@ -137,35 +143,33 @@ function Dashboard({ setIsAuthenticated }: DashboardProps) {
               </List>
             </Paper>
           </Grid>
-
-          {/* Player */}
-          <Grid item xs={12}>
-            <Paper sx={{ p: 2, position: 'fixed', bottom: 0, left: 0, right: 0 }}>
-              <Box display="flex" alignItems="center" justifyContent="center">
-                <IconButton>
-                  <SkipPrevious />
-                </IconButton>
-                <IconButton onClick={handlePlayPause}>
-                  {isPlaying ? <Pause /> : <PlayArrow />}
-                </IconButton>
-                <IconButton>
-                  <SkipNext />
-                </IconButton>
-                <Box ml={2}>
-                  {currentSong ? (
-                    <Typography variant="subtitle1">
-                      Now Playing: {currentSong.title}
-                    </Typography>
-                  ) : (
-                    <Typography variant="subtitle1">
-                      Select a song to play
-                    </Typography>
-                  )}
-                </Box>
-              </Box>
-            </Paper>
-          </Grid>
         </Grid>
+
+        {/* Player Controls */}
+        <Paper sx={{ p: 2, mt: 2 }}>
+          <Box display="flex" alignItems="center" justifyContent="center">
+            <IconButton>
+              <SkipPrevious />
+            </IconButton>
+            <IconButton onClick={handlePlayPause}>
+              {isPlaying ? <Pause /> : <PlayArrow />}
+            </IconButton>
+            <IconButton>
+              <SkipNext />
+            </IconButton>
+            <Box ml={2}>
+              {currentSong ? (
+                <Typography variant="subtitle1">
+                  Now Playing: {currentSong.title}
+                </Typography>
+              ) : (
+                <Typography variant="subtitle1">
+                  Select a song to play
+                </Typography>
+              )}
+            </Box>
+          </Box>
+        </Paper>
       </Container>
 
       {/* Create Playlist Dialog */}
