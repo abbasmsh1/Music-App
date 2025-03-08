@@ -101,10 +101,11 @@
                                 <span class="user-status {% if user.is_active %}active{% endif %}">
                                     {{ "Active" if user.is_active else "Inactive" }}
                                 </span>
+                                <span class="user-date">Joined: {{ user.created_at[:10] }}</span>
                             </div>
                         </div>
                         <div class="user-actions">
-                            <button class="btn-icon" onclick="toggleUserStatus({{ user.id }}, {{ user.is_active|tojson }})">
+                            <button class="btn-icon" onclick="toggleUserStatus({{ user.id }}, {{ 'true' if user.is_active else 'false' }})">
                                 <span class="material-icons">{{ "block" if user.is_active else "check_circle" }}</span>
                             </button>
                             <button class="btn-icon" onclick="deleteUser({{ user.id }})">

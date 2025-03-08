@@ -1,5 +1,6 @@
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Table
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Table, DateTime
 from sqlalchemy.orm import relationship
+from datetime import datetime
 from database import Base
 
 # Association table for playlist songs
@@ -16,15 +17,16 @@ class User(Base):
     username = Column(String, unique=True, index=True)
     hashed_password = Column(String)
     is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
     
-    playlists = relationship("Playlist", back_populates="owner")
+    playlists = relationship("Playlist", back_populates="user")
 
 class Artist(Base):
     __tablename__ = "artists"
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
-    bio = Column(String)
+    bio = Column(String, nullable=True)
     
     songs = relationship("Song", back_populates="artist")
 
@@ -34,7 +36,7 @@ class Song(Base):
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, index=True)
     artist_id = Column(Integer, ForeignKey("artists.id"))
-    duration = Column(Integer)  # Duration in seconds
+    duration = Column(Integer, default=0)
     file_path = Column(String)
     
     artist = relationship("Artist", back_populates="songs")
@@ -47,5 +49,5 @@ class Playlist(Base):
     title = Column(String, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
     
-    owner = relationship("User", back_populates="playlists")
+    user = relationship("User", back_populates="playlists")
     songs = relationship("Song", secondary=playlist_songs, back_populates="playlists") 

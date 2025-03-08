@@ -1,9 +1,11 @@
 from pydantic import BaseModel
 from typing import List, Optional
+from datetime import datetime
 
 class SongBase(BaseModel):
     title: str
-    duration: int
+    duration: Optional[int] = 0
+    file_path: Optional[str] = None
 
 class SongCreate(SongBase):
     artist_id: int
@@ -11,7 +13,7 @@ class SongCreate(SongBase):
 class Song(SongBase):
     id: int
     artist_id: int
-    file_path: str
+    artist: Optional['Artist'] = None
 
     class Config:
         from_attributes = True
@@ -47,21 +49,28 @@ class Playlist(PlaylistBase):
 class UserBase(BaseModel):
     email: str
     username: str
+    is_active: bool = True
 
 class UserCreate(UserBase):
     password: str
 
 class User(UserBase):
     id: int
-    is_active: bool
+    created_at: datetime
     playlists: List[Playlist] = []
 
     class Config:
         from_attributes = True
+        json_encoders = {
+            datetime: lambda v: v.isoformat()
+        }
 
 class Token(BaseModel):
     access_token: str
     token_type: str
 
 class TokenData(BaseModel):
-    username: Optional[str] = None 
+    username: Optional[str] = None
+
+# Avoid circular imports
+Artist.update_forward_refs(Song=Song) 

@@ -497,4 +497,12 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: 24px;
+}
+
+.user-date {
+    color: var(--text-secondary);
+    font-size: 12px;
+    background-color: var(--background-base);
+    padding: 2px 8px;
+    border-radius: 12px;
 } 
