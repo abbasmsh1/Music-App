@@ -3,14 +3,19 @@ import requests
 from functools import wraps
 import os
 from datetime import datetime
+from flask_socketio import SocketIO, emit, join_room, leave_room
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)  # for session management
+socketio = SocketIO(app)
 API_URL = 'http://localhost:8000'
 
 # Admin credentials (in a real app, these should be in a secure config/database)
 ADMIN_USERNAME = "admin"
 ADMIN_PASSWORD = "admin123"  # In production, use a strong hashed password
+
+# Store active listening sessions
+listening_sessions = {}
 
 # Custom filters
 @app.template_filter('zfill')
@@ -304,6 +309,137 @@ def manage_artist(artist_id):
     except requests.RequestException:
         return jsonify({'error': f'Failed to {request.method.lower()} artist'}), 500
 
+@app.route('/users')
+@login_required
+def users():
+    headers = get_api_headers()
+    try:
+        users = requests.get(f'{API_URL}/users/', headers=headers).json()
+        playlists = requests.get(f'{API_URL}/playlists/', headers=headers).json()
+        return render_template('users.html', users=users, playlists=playlists)
+    except requests.RequestException:
+        return render_template('error.html', 
+                             error_code=500,
+                             error_message='Failed to load users')
+
+@app.route('/listening-session/create', methods=['POST'])
+@login_required
+def create_listening_session():
+    data = request.json
+    playlist_id = data.get('playlist_id')
+    target_user = data.get('target_user')
+    
+    if not playlist_id or not target_user:
+        return jsonify({'error': 'Missing required fields'}), 400
+    
+    # Generate a unique session ID
+    session_id = os.urandom(16).hex()
+    
+    # Store session information
+    listening_sessions[session_id] = {
+        'host_user': session.get('username'),
+        'target_user': target_user,
+        'playlist_id': playlist_id,
+        'current_song': None,
+        'is_playing': False,
+        'position': 0
+    }
+    
+    return jsonify({'session_id': session_id})
+
+@app.route('/listening-session/<session_id>')
+@login_required
+def listening_session(session_id):
+    if session_id not in listening_sessions:
+        return render_template('error.html',
+                             error_code=404,
+                             error_message='Session not found')
+    
+    session_data = listening_sessions[session_id]
+    headers = get_api_headers()
+    
+    try:
+        playlist = requests.get(
+            f'{API_URL}/playlists/{session_data["playlist_id"]}',
+            headers=headers
+        ).json()
+        
+        return render_template('listening_session.html',
+                             session=session_data,
+                             playlist=playlist,
+                             current_song=session_data['current_song'],
+                             is_host=session.get('username') == session_data['host_user'])
+    except requests.RequestException:
+        return render_template('error.html',
+                             error_code=500,
+                             error_message='Failed to load session data')
+
+# WebSocket event handlers
+@socketio.on('connect', namespace='/ws/session')
+def handle_connect():
+    session_id = request.args.get('session_id')
+    if session_id in listening_sessions:
+        join_room(session_id)
+        emit('user_joined', {
+            'username': session.get('username')
+        }, room=session_id)
+
+@socketio.on('disconnect', namespace='/ws/session')
+def handle_disconnect():
+    session_id = request.args.get('session_id')
+    if session_id in listening_sessions:
+        leave_room(session_id)
+        emit('user_left', {
+            'username': session.get('username')
+        }, room=session_id)
+
+@socketio.on('play', namespace='/ws/session')
+def handle_play(data):
+    session_id = data.get('session_id')
+    if session_id in listening_sessions:
+        session_data = listening_sessions[session_id]
+        if session.get('username') == session_data['host_user']:
+            session_data['is_playing'] = True
+            emit('play', {
+                'song_id': session_data['current_song'],
+                'position': session_data['position']
+            }, room=session_id)
+
+@socketio.on('pause', namespace='/ws/session')
+def handle_pause(data):
+    session_id = data.get('session_id')
+    if session_id in listening_sessions:
+        session_data = listening_sessions[session_id]
+        if session.get('username') == session_data['host_user']:
+            session_data['is_playing'] = False
+            emit('pause', room=session_id)
+
+@socketio.on('seek', namespace='/ws/session')
+def handle_seek(data):
+    session_id = data.get('session_id')
+    position = data.get('position')
+    if session_id in listening_sessions:
+        session_data = listening_sessions[session_id]
+        if session.get('username') == session_data['host_user']:
+            session_data['position'] = position
+            emit('seek', {'position': position}, room=session_id)
+
+@socketio.on('next', namespace='/ws/session')
+def handle_next(data):
+    session_id = data.get('session_id')
+    if session_id in listening_sessions:
+        session_data = listening_sessions[session_id]
+        if session.get('username') == session_data['host_user']:
+            emit('next', room=session_id)
+
+@socketio.on('previous', namespace='/ws/session')
+def handle_previous(data):
+    session_id = data.get('session_id')
+    if session_id in listening_sessions:
+        session_data = listening_sessions[session_id]
+        if session.get('username') == session_data['host_user']:
+            emit('previous', room=session_id)
+
 @app.errorhandler(404)
 def not_found_error(error):
     return render_template('error.html',
@@ -317,4 +453,4 @@ def internal_error(error):
                          error_message='Internal server error'), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, port=3000) 
+    socketio.run(app, debug=True, port=3000) 

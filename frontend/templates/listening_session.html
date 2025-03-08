@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+
+{% block title %}Listening Session - Music App{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="logo">
+            <h1>Music App</h1>
+        </div>
+        <div class="session-info">
+            <h2>Listening Session</h2>
+            <div class="session-users">
+                <div class="session-user">
+                    <span class="material-icons">account_circle</span>
+                    <span>{{ session.host_user }}</span>
+                    <span class="host-badge">Host</span>
+                </div>
+                <div class="session-user">
+                    <span class="material-icons">account_circle</span>
+                    <span>{{ session.target_user }}</span>
+                </div>
+            </div>
+        </div>
+        <div class="user-controls">
+            <a href="{{ url_for('dashboard') }}" class="btn-back">
+                <span class="material-icons">home</span>
+                Dashboard
+            </a>
+            <button class="btn-leave" onclick="leaveSession()">
+                <span class="material-icons">exit_to_app</span>
+                Leave Session
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="session-content">
+            <div class="now-playing-section">
+                <div class="now-playing-info">
+                    <h2>Now Playing</h2>
+                    <div class="current-track">
+                        <div class="track-info">
+                            <h3 id="currentSongTitle">{{ current_song.title if current_song else 'No song playing' }}</h3>
+                            <p id="currentArtist">{{ current_song.artist.name if current_song and current_song.artist else '' }}</p>
+                        </div>
+                        <div class="track-progress">
+                            <div class="progress">
+                                <div class="progress-bar" id="progressBar"></div>
+                            </div>
+                            <div class="time-info">
+                                <span id="currentTime">0:00</span>
+                                <span id="duration">0:00</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="playlist-section">
+                <h2>{{ playlist.title }}</h2>
+                <div class="song-list">
+                    {% for song in playlist.songs %}
+                    <div class="song-item {% if current_song and current_song.id == song.id %}playing{% endif %}"
+                         data-song-id="{{ song.id }}">
+                        <span class="material-icons">music_note</span>
+                        <div class="song-info">
+                            <div class="song-title">{{ song.title }}</div>
+                            <div class="song-meta">
+                                <span class="song-artist">{{ song.artist.name if song.artist else 'Unknown Artist' }}</span>
+                                <span class="song-duration">{{ (song.duration / 60)|int }}:{{ (song.duration % 60)|string|zfill(2) }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Player Controls -->
+        <div class="player-controls">
+            <div class="controls">
+                <button class="btn-icon" onclick="previousSong()">
+                    <span class="material-icons">skip_previous</span>
+                </button>
+                <button class="btn-icon btn-play" onclick="togglePlay()" id="playPauseBtn">
+                    <span class="material-icons" id="playPauseIcon">play_arrow</span>
+                </button>
+                <button class="btn-icon" onclick="nextSong()">
+                    <span class="material-icons">skip_next</span>
+                </button>
+            </div>
+            <div class="volume-control">
+                <span class="material-icons" onclick="toggleMute()">volume_up</span>
+                <input type="range" class="volume-slider" min="0" max="100" value="100" 
+                       onchange="updateVolume(this.value)">
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let socket;
+let isHost = {{ 'true' if is_host else 'false' }};
+let currentSong = null;
+let isPlaying = false;
+
+// Connect to WebSocket
+function connectWebSocket() {
+    socket = new WebSocket(`ws://${window.location.host}/ws/session/{{ session.id }}`);
+    
+    socket.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+        handleWebSocketMessage(data);
+    };
+
+    socket.onclose = function() {
+        console.log('WebSocket connection closed');
+        setTimeout(connectWebSocket, 1000); // Reconnect after 1 second
+    };
+}
+
+function handleWebSocketMessage(data) {
+    switch(data.type) {
+        case 'play':
+            playSong(data.song_id, data.position);
+            break;
+        case 'pause':
+            pauseSong();
+            break;
+        case 'seek':
+            seekTo(data.position);
+            break;
+        case 'next':
+            playNextSong();
+            break;
+        case 'previous':
+            playPreviousSong();
+            break;
+        case 'user_left':
+            showNotification(`${data.username} left the session`);
+            break;
+        case 'user_joined':
+            showNotification(`${data.username} joined the session`);
+            break;
+    }
+}
+
+function sendWebSocketMessage(message) {
+    if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify(message));
+    }
+}
+
+function togglePlay() {
+    if (!isHost) return;
+    
+    if (isPlaying) {
+        sendWebSocketMessage({ type: 'pause' });
+    } else {
+        sendWebSocketMessage({ type: 'play' });
+    }
+}
+
+function previousSong() {
+    if (!isHost) return;
+    sendWebSocketMessage({ type: 'previous' });
+}
+
+function nextSong() {
+    if (!isHost) return;
+    sendWebSocketMessage({ type: 'next' });
+}
+
+function updateVolume(value) {
+    // Local volume control only
+    const audio = document.getElementById('audioPlayer');
+    if (audio) {
+        audio.volume = value / 100;
+    }
+}
+
+function leaveSession() {
+    if (confirm('Are you sure you want to leave this listening session?')) {
+        window.location.href = '{{ url_for('dashboard') }}';
+    }
+}
+
+function showNotification(message) {
+    const notification = document.createElement('div');
+    notification.className = 'notification';
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.classList.add('show');
+        setTimeout(() => {
+            notification.classList.remove('show');
+            setTimeout(() => notification.remove(), 300);
+        }, 3000);
+    }, 100);
+}
+
+// Initialize WebSocket connection
+connectWebSocket();
+
+// Disable controls for non-host users
+if (!isHost) {
+    document.querySelectorAll('.controls button').forEach(btn => {
+        btn.disabled = true;
+        btn.title = 'Only the host can control playback';
+    });
+}
+</script>
+{% endblock %} 

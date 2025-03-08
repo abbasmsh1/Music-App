@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block title %}Find Users - Music App{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="logo">
+            <h1>Music App</h1>
+        </div>
+        <div class="playlists">
+            <div class="playlists-header">
+                <h2>Your Playlists</h2>
+            </div>
+            <ul class="playlist-list">
+                {% for playlist in playlists %}
+                <li onclick="window.location.href='{{ url_for('playlist', playlist_id=playlist.id) }}'">
+                    <span class="material-icons">playlist_play</span>
+                    {{ playlist.title }}
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="user-controls">
+            <a href="{{ url_for('dashboard') }}" class="btn-back">
+                <span class="material-icons">home</span>
+                Dashboard
+            </a>
+            <a href="{{ url_for('logout') }}" class="btn-logout">
+                <span class="material-icons">logout</span>
+                Logout
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="users-section">
+            <div class="section-header">
+                <h2>Find Users</h2>
+                <div class="search-box">
+                    <input type="text" id="userSearchInput" placeholder="Search users by username or email..." 
+                           onkeyup="searchUsers()" />
+                </div>
+            </div>
+
+            <div class="users-grid">
+                {% for user in users %}
+                <div class="user-card" data-username="{{ user.username }}" data-email="{{ user.email }}">
+                    <div class="user-card-header">
+                        <span class="material-icons user-avatar">account_circle</span>
+                        <h3>{{ user.username }}</h3>
+                    </div>
+                    <div class="user-card-content">
+                        <div class="user-playlists">
+                            <h4>Public Playlists</h4>
+                            <ul>
+                                {% for playlist in user.playlists %}
+                                <li>
+                                    <a href="{{ url_for('playlist', playlist_id=playlist.id) }}" class="playlist-link">
+                                        <span class="material-icons">playlist_play</span>
+                                        {{ playlist.title }}
+                                    </a>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="user-card-actions">
+                        <button class="btn btn-primary" onclick="startListeningSession('{{ user.username }}')">
+                            <span class="material-icons">headphones</span>
+                            Listen Together
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Listening Session Modal -->
+<div id="listeningSessionModal" class="modal">
+    <div class="modal-content">
+        <h2>Start Listening Session</h2>
+        <p>Choose a playlist to listen together:</p>
+        <form id="sessionForm" onsubmit="createListeningSession(event)">
+            <div class="form-group">
+                <label for="playlistSelect">Select Playlist</label>
+                <select id="playlistSelect" name="playlist_id" required>
+                    <option value="">Choose a playlist...</option>
+                    {% for playlist in playlists %}
+                    <option value="{{ playlist.id }}">{{ playlist.title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <input type="hidden" id="targetUser" name="target_user">
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="hideListeningSessionModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Start Session</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function searchUsers() {
+    const input = document.getElementById('userSearchInput');
+    const filter = input.value.toLowerCase();
+    const userCards = document.querySelectorAll('.user-card');
+
+    userCards.forEach(card => {
+        const username = card.dataset.username.toLowerCase();
+        const email = card.dataset.email.toLowerCase();
+        if (username.includes(filter) || email.includes(filter)) {
+            card.style.display = '';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+}
+
+function startListeningSession(username) {
+    document.getElementById('targetUser').value = username;
+    document.getElementById('listeningSessionModal').classList.add('show');
+}
+
+function hideListeningSessionModal() {
+    document.getElementById('listeningSessionModal').classList.remove('show');
+}
+
+function createListeningSession(event) {
+    event.preventDefault();
+    const form = event.target;
+    const data = {
+        playlist_id: form.playlist_id.value,
+        target_user: form.target_user.value
+    };
+
+    fetch('/listening-session/create', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.session_id) {
+            window.location.href = `/listening-session/${data.session_id}`;
+        } else {
+            alert('Failed to create listening session');
+        }
+    })
+    .catch(error => {
+        alert('An error occurred while creating the session');
+    });
+}
+</script>
+{% endblock %} 
