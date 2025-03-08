@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for, s
 import requests
 from functools import wraps
 import os
+from datetime import datetime
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)  # for session management
@@ -11,10 +12,21 @@ API_URL = 'http://localhost:8000'
 ADMIN_USERNAME = "admin"
 ADMIN_PASSWORD = "admin123"  # In production, use a strong hashed password
 
-# Custom filter for zero-padding strings
+# Custom filters
 @app.template_filter('zfill')
 def zfill_filter(value, width):
     return str(value).zfill(width)
+
+@app.template_filter('format_date')
+def format_date_filter(value, format='%Y-%m-%d'):
+    if isinstance(value, str):
+        try:
+            value = datetime.fromisoformat(value.replace('Z', '+00:00'))
+        except (ValueError, TypeError):
+            return 'N/A'
+    if isinstance(value, datetime):
+        return value.strftime(format)
+    return 'N/A'
 
 def login_required(f):
     @wraps(f)

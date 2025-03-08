@@ -101,7 +101,7 @@
                                 <span class="user-status {% if user.is_active %}active{% endif %}">
                                     {{ "Active" if user.is_active else "Inactive" }}
                                 </span>
-                                <span class="user-date">Joined: {{ user.created_at[:10] }}</span>
+                                <span class="user-date">Joined: {{ user.created_at|format_date }}</span>
                             </div>
                         </div>
                         <div class="user-actions">
