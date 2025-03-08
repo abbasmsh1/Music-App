@@ -184,6 +184,28 @@
         </form>
     </div>
 </div>
+
+<!-- Artist Modal -->
+<div id="artistModal" class="modal">
+    <div class="modal-content">
+        <h2 id="artistModalTitle">Add Artist</h2>
+        <form id="artistForm" onsubmit="handleArtistSubmit(event)">
+            <div class="form-group">
+                <label for="artistName">Artist Name</label>
+                <input type="text" id="artistName" name="name" required>
+            </div>
+            <div class="form-group">
+                <label for="artistBio">Biography</label>
+                <textarea id="artistBio" name="bio" rows="4"></textarea>
+            </div>
+            <input type="hidden" id="artistId" name="id">
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="hideArtistModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary" id="artistSubmitBtn">Add Artist</button>
+            </div>
+        </form>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -269,6 +291,92 @@ function deleteSong(songId) {
             } else {
                 alert('Failed to delete song');
             }
+        });
+    }
+}
+
+function showArtistModal(artist = null) {
+    const modal = document.getElementById('artistModal');
+    const form = document.getElementById('artistForm');
+    const title = document.getElementById('artistModalTitle');
+    const submitBtn = document.getElementById('artistSubmitBtn');
+
+    if (artist) {
+        title.textContent = 'Edit Artist';
+        submitBtn.textContent = 'Update Artist';
+        document.getElementById('artistName').value = artist.name;
+        document.getElementById('artistBio').value = artist.bio || '';
+        document.getElementById('artistId').value = artist.id;
+    } else {
+        title.textContent = 'Add Artist';
+        submitBtn.textContent = 'Add Artist';
+        form.reset();
+        document.getElementById('artistId').value = '';
+    }
+
+    modal.classList.add('show');
+}
+
+function hideArtistModal() {
+    document.getElementById('artistModal').classList.remove('show');
+}
+
+function handleArtistSubmit(event) {
+    event.preventDefault();
+    const form = event.target;
+    const artistId = document.getElementById('artistId').value;
+    const data = {
+        name: form.name.value,
+        bio: form.bio.value
+    };
+
+    const method = artistId ? 'PUT' : 'POST';
+    const url = artistId ? `/admin/artists/${artistId}` : '/admin/artists';
+
+    fetch(url, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => {
+        if (response.ok) {
+            window.location.reload();
+        } else {
+            alert('Failed to save artist');
+        }
+    })
+    .catch(error => {
+        alert('An error occurred while saving the artist');
+    });
+}
+
+function editArtist(artistId) {
+    fetch(`/admin/artists/${artistId}`)
+        .then(response => response.json())
+        .then(artist => {
+            showArtistModal(artist);
+        })
+        .catch(error => {
+            alert('Failed to load artist details');
+        });
+}
+
+function deleteArtist(artistId) {
+    if (confirm('Are you sure you want to delete this artist? This will also delete all their songs.')) {
+        fetch(`/admin/artists/${artistId}`, {
+            method: 'DELETE'
+        })
+        .then(response => {
+            if (response.ok) {
+                window.location.reload();
+            } else {
+                alert('Failed to delete artist');
+            }
+        })
+        .catch(error => {
+            alert('An error occurred while deleting the artist');
         });
     }
 }

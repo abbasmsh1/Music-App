@@ -265,6 +265,45 @@ def delete_user(user_id):
     except requests.RequestException:
         return jsonify({'error': 'Failed to delete user'}), 500
 
+@app.route('/admin/artists', methods=['POST'])
+@admin_required
+def create_artist():
+    headers = get_api_headers()
+    try:
+        response = requests.post(
+            f'{API_URL}/artists/',
+            json=request.json,
+            headers=headers
+        )
+        return jsonify(response.json())
+    except requests.RequestException:
+        return jsonify({'error': 'Failed to create artist'}), 500
+
+@app.route('/admin/artists/<int:artist_id>', methods=['GET', 'PUT', 'DELETE'])
+@admin_required
+def manage_artist(artist_id):
+    headers = get_api_headers()
+    try:
+        if request.method == 'GET':
+            response = requests.get(
+                f'{API_URL}/artists/{artist_id}',
+                headers=headers
+            )
+        elif request.method == 'PUT':
+            response = requests.put(
+                f'{API_URL}/artists/{artist_id}',
+                json=request.json,
+                headers=headers
+            )
+        else:  # DELETE
+            response = requests.delete(
+                f'{API_URL}/artists/{artist_id}',
+                headers=headers
+            )
+        return jsonify(response.json())
+    except requests.RequestException:
+        return jsonify({'error': f'Failed to {request.method.lower()} artist'}), 500
+
 @app.errorhandler(404)
 def not_found_error(error):
     return render_template('error.html',
