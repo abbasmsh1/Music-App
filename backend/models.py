@@ -1,6 +1,6 @@
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Table
 from sqlalchemy.orm import relationship
-from .database import Base
+from database import Base
 
 # Association table for playlist songs
 playlist_songs = Table('playlist_songs', Base.metadata,
